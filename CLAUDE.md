@@ -43,8 +43,8 @@ AI-first universal email client. Mobile-ready PWA built with Next.js on Vercel.
 - **Email providers:**
   - Gmail — Google OAuth 2.0 + Gmail API (`googleapis`)
   - Office 365 — Microsoft OAuth 2.0 + Graph API (`@microsoft/microsoft-graph-client`)
-  - Yahoo/AOL — IMAP via `imapflow` + SMTP via `nodemailer`
-- **Auth/Session:** `next-auth` or encrypted HTTP-only cookies for token management
+- **Auth/Session:** Vercel KV (Redis) for encrypted OAuth tokens + session data. Cookies hold only a session ID — tokens are too large for cookie storage.
+- **Cache:** Vercel KV also caches AI enrichments (summaries, priorities) keyed by email ID. TTL 1 hour. Avoids re-processing on every page load.
 - **PWA:** Web app manifest + service worker (via `next-pwa` or manual)
 - **Testing:** Vitest + React Testing Library
 
@@ -83,7 +83,6 @@ src/
       types.ts            — Unified email/account types (provider-agnostic)
       gmail.ts            — Gmail API operations
       microsoft.ts        — Microsoft Graph operations
-      imap.ts             — IMAP client wrapper
       unified.ts          — Provider router: normalizes all providers to unified types
     ai/
       client.ts           — Claude API client
@@ -104,12 +103,12 @@ public/
 - **AI-first UX:** Smart Inbox is the default view — emails arrive pre-prioritized, summarized, with draft replies ready. Traditional inbox is one tap away but not the default.
 - **Unified abstraction:** All email providers normalize to a single `Email` type. Components never know which provider an email came from.
 - **Mobile-first:** Responsive design with bottom nav on mobile, sidebar on desktop. Every interaction must work on a phone.
-- **Provider parity:** Gmail is the primary fully-implemented provider. Office 365 and IMAP share the same interface and are progressively implemented.
+- **Two solid providers:** Gmail is primary, Office 365 is secondary. Both fully implemented. The `EmailProvider` interface allows adding IMAP later but we don't ship a half-working third provider.
 
 ### Conventions
 - App Router with server components by default, `"use client"` only where needed
 - API routes handle all email provider communication — no direct API calls from client
 - Tailwind for all styling, no CSS modules or styled-components
 - Parallel route fetching where possible (React Suspense boundaries)
-- Environment variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `ENCRYPTION_KEY`, `NEXTAUTH_SECRET`
+- Environment variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `ENCRYPTION_KEY` (AES-256-GCM, used by `lib/auth/tokens.ts` to encrypt OAuth tokens at rest in KV), `KV_REST_API_URL`, `KV_REST_API_TOKEN`
 - Scripts: `npm run dev` (local), `npm run build` (production), `npm run test` (vitest)

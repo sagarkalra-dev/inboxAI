@@ -18,12 +18,13 @@ The build follows a strict sequence: define specs first, implement against specs
 5. **Verify:** `npm run dev` serves empty shell, types compile
 
 ### Phase 2: Auth & Email Core
-6. Implement Gmail OAuth flow (initiate + callback + token storage)
-7. Implement Gmail API operations (list, get, send, reply, search, labels, archive, delete)
-8. Implement Microsoft OAuth flow
-9. Implement Microsoft Graph operations
-10. Build unified provider router that dispatches to the correct provider
-11. **Verify:** Can authenticate with Gmail, fetch real emails via API routes
+6. Set up Vercel KV for token storage and AI cache
+7. Implement Gmail OAuth flow (initiate + callback + encrypted token storage in KV)
+8. Implement Gmail API operations (list, get, send, reply, search, labels, archive, delete)
+9. Implement Microsoft OAuth flow
+10. Implement Microsoft Graph operations
+11. Build unified provider router that dispatches to the correct provider
+12. **Verify:** Can authenticate with Gmail, fetch real emails via API routes
 
 ### Phase 3: AI Layer
 12. Implement Claude API client with batch processing
@@ -48,10 +49,22 @@ The build follows a strict sequence: define specs first, implement against specs
 27. **Verify:** Lighthouse PWA audit passes, installable on mobile
 
 ### Phase 6: Testing & Deploy
-28. Write tests for API routes (auth, email operations, AI)
-29. Write tests for key components (SmartInbox, EmailDetail, Compose)
-30. Deploy to Vercel, configure environment variables
-31. **Verify:** Live URL works end-to-end — connect Gmail, see AI inbox, send reply
+
+Critical test cases:
+1. Gmail OAuth flow — token stored and retrievable from KV
+2. Gmail fetch → unified Email type normalization
+3. Gmail send/reply — correct API call with proper headers
+4. AI batch enrichment — 10 emails in, 10 enrichments out, cached in KV
+5. AI cache hit — second fetch skips Claude call
+6. AI draft reply — thread context produces coherent draft
+7. SmartInbox component — renders prioritized groups correctly
+8. EmailDetail component — displays AI summary and draft suggestions
+9. Account switcher — shows connected accounts, handles disconnect
+10. Compose — validates required fields, sends via correct provider
+
+28. Write tests covering the critical cases above
+29. Deploy to Vercel, configure environment variables
+30. **Verify:** Live URL works end-to-end — connect Gmail, see AI inbox, send reply
 
 ## Claude Code Discipline
 

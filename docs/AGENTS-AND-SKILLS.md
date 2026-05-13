@@ -1,45 +1,55 @@
 # InboxAI — Agents, Skills, Hooks & Plugins
 
-## Agents (Claude Code multi-agent workflow)
+## Agents (Claude Code build agents)
 
-| Agent | Responsibility |
-|-------|---------------|
-| **Architect** | Scaffolds project, defines types, sets up routing and provider abstractions |
-| **Auth Agent** | Implements OAuth flows for Gmail and Microsoft, token encryption, session management |
-| **Gmail Agent** | Implements Gmail API integration — read, send, reply, forward, search, labels, archive, delete |
-| **Microsoft Agent** | Implements Microsoft Graph API integration — same operations as Gmail |
-| **IMAP Agent** | Implements IMAP/SMTP abstraction layer for Yahoo/AOL |
-| **AI Agent** | Implements Claude API integration — summarize, prioritize, draft, categorize |
-| **UI Agent** | Builds all React components — Smart Inbox, email detail, compose, account switcher |
-| **PWA Agent** | Adds manifest, service worker, icons, mobile responsiveness |
-| **Test Agent** | Writes Vitest unit tests and integration tests for API routes and components |
+Each agent owns a domain and runs as a focused Claude Code session. Agents are sequenced by dependency — Auth before Email, Email before AI, AI before UI.
 
-## Skills
+| Agent | Owns | Depends on | Delivers |
+|-------|------|------------|----------|
+| **Architect** | Project scaffold, types, interfaces | — | Compiling Next.js shell with unified Email type and EmailProvider interface |
+| **Auth Agent** | OAuth flows, token encryption, Vercel KV session store | Architect | Working `/api/auth/gmail` and `/api/auth/microsoft` endpoints |
+| **Gmail Agent** | Gmail API integration | Auth Agent | All Gmail operations (list, get, send, reply, forward, search, labels, archive, delete) via `/api/emails` |
+| **Microsoft Agent** | Microsoft Graph integration | Auth Agent | Same operations as Gmail, same API surface |
+| **AI Agent** | Claude API client, batch enrichment, draft generation | Gmail Agent (needs real emails to test) | `/api/ai/*` endpoints returning enriched email data |
+| **UI Agent** | All React components | AI Agent (needs API to fetch from) | Smart Inbox, email detail, compose, account switcher — working end-to-end |
+| **PWA Agent** | Manifest, service worker, icons, mobile polish | UI Agent | Lighthouse PWA audit passing, installable on phone |
+| **Test Agent** | Vitest test suite | All agents | Tests passing for critical paths |
 
-| Skill | Purpose |
-|-------|---------|
-| `email:fetch` | Fetch emails from any connected provider (normalized to unified type) |
-| `email:send` | Send/reply/forward via the appropriate provider |
-| `email:mutate` | Archive, delete, label, mark read/unread |
-| `email:search` | Full-text search across providers |
-| `ai:summarize` | Batch-summarize emails via Claude |
-| `ai:prioritize` | Score and categorize emails via Claude |
-| `ai:draft` | Generate reply drafts given thread context |
-| `auth:connect` | Initiate OAuth flow for a provider |
-| `auth:refresh` | Silently refresh expired tokens |
+## Skills (runtime capabilities)
+
+| Skill | Implementation | Notes |
+|-------|---------------|-------|
+| `email:fetch` | `lib/email/unified.ts` → dispatches to `gmail.ts` or `microsoft.ts` | Returns normalized `Email[]` |
+| `email:send` | Provider-specific send via Gmail API or Graph API | Handles compose, reply, forward |
+| `email:mutate` | Archive, delete, label, star, mark read/unread | Provider-specific mutation |
+| `email:search` | Gmail: `q` parameter, Microsoft: `$search` OData | Unified search results |
+| `ai:enrich` | Batches up to 10 emails → single Claude call → returns summaries + priorities + categories | Results cached in Vercel KV (1hr TTL) |
+| `ai:draft` | Full thread context → Claude → reply draft | On-demand, not cached |
+| `auth:connect` | Initiates OAuth redirect for selected provider | Returns authorization URL |
+| `auth:refresh` | Checks token expiry, refreshes transparently before API calls | Runs in provider layer |
 
 ## Hooks
 
-| Hook | Trigger | Action |
-|------|---------|--------|
-| `pre-commit` | Before each git commit | Run `npm run lint` and `npm run typecheck` |
-| `post-fetch` | After emails are fetched | Trigger AI enrichment pipeline (summarize + prioritize) |
-| `token-expiry` | When an OAuth token nears expiration | Auto-refresh before the next API call |
+| Hook | Implementation | Purpose |
+|------|---------------|---------|
+| `pre-commit` | Claude Code hook in `.claude/settings.json` | Runs `npm run lint && npm run typecheck` before every commit |
+| `post-fetch` | Called in `/api/emails/route.ts` after provider fetch | Triggers `ai:enrich` for uncached emails |
+| `token-refresh` | Called in `lib/auth/tokens.ts` before every provider API call | Transparently refreshes expired OAuth tokens |
 
-## Plugins (Extensibility Points)
+## Plugin interface (extensibility)
 
-| Plugin slot | Description |
-|-------------|-------------|
-| `provider` | Add new email providers by implementing the `EmailProvider` interface |
-| `ai-enrichment` | Add custom AI processing steps (e.g., sentiment analysis, action item extraction) |
-| `theme` | Swap color schemes and layout variants |
+New email providers implement `EmailProvider`:
+
+```typescript
+interface EmailProvider {
+  id: string;
+  connect(credentials: unknown): Promise<AuthResult>;
+  listEmails(options: ListOptions): Promise<Email[]>;
+  getEmail(id: string): Promise<Email>;
+  sendEmail(draft: DraftEmail): Promise<void>;
+  searchEmails(query: string): Promise<Email[]>;
+  mutateEmail(id: string, mutation: EmailMutation): Promise<void>;
+}
+```
+
+This is how Gmail and Microsoft are implemented. Adding IMAP or other providers later means implementing this interface — no changes to UI or AI layer.
