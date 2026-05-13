@@ -48,7 +48,7 @@ All providers normalize to this shape:
 ```typescript
 interface Email {
   id: string;
-  provider: "gmail" | "microsoft";
+  provider: "gmail" | "microsoft" | "imap";
   accountId: string;
   threadId?: string;
   from: Contact;
@@ -116,8 +116,9 @@ Draft replies are generated **on demand** when the user opens an email detail vi
 |----------|------|------|------|-----------|--------|--------|----------------|
 | Gmail | Full OAuth | Yes | Yes | Yes | Yes | Yes | Yes |
 | Office 365 | Full OAuth | Yes | Yes | Yes | Yes | Yes | Yes |
+| IMAP (Yahoo/AOL/custom) | App password (encrypted in KV) | Yes | Yes (SMTP) | Yes | Yes | Flags only | Yes |
 
-The `EmailProvider` interface allows adding IMAP/SMTP providers later. We ship two solid providers rather than three partial ones.
+All three implement the same `EmailProvider` interface; new providers are pluggable by implementing the same contract.
 
 ## UI States
 

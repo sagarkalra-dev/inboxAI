@@ -10,6 +10,7 @@ Each agent owns a domain and runs as a focused Claude Code session. Agents are s
 | **Auth Agent** | OAuth flows, token encryption, Vercel KV session store | Architect | Working `/api/auth/gmail` and `/api/auth/microsoft` endpoints |
 | **Gmail Agent** | Gmail API integration | Auth Agent | All Gmail operations (list, get, send, reply, forward, search, labels, archive, delete) via `/api/emails` |
 | **Microsoft Agent** | Microsoft Graph integration | Auth Agent | Same operations as Gmail, same API surface |
+| **IMAP Agent** | `imapflow` + `nodemailer` for Yahoo/AOL/custom IMAP via app passwords | Auth Agent | Same `EmailProvider` operations; credentials encrypted in KV |
 | **AI Agent** | Claude API client, batch enrichment, draft generation | Gmail Agent (needs real emails to test) | `/api/ai/*` endpoints returning enriched email data |
 | **UI Agent** | All React components | AI Agent (needs API to fetch from) | Smart Inbox, email detail, compose, account switcher — working end-to-end |
 | **PWA Agent** | Manifest, service worker, icons, mobile polish | UI Agent | Lighthouse PWA audit passing, installable on phone |
@@ -19,7 +20,7 @@ Each agent owns a domain and runs as a focused Claude Code session. Agents are s
 
 | Skill | Implementation | Notes |
 |-------|---------------|-------|
-| `email:fetch` | `lib/email/unified.ts` → dispatches to `gmail.ts` or `microsoft.ts` | Returns normalized `Email[]` |
+| `email:fetch` | `lib/email/unified.ts` → dispatches to `gmail.ts`, `microsoft.ts`, or `imap.ts` | Returns normalized `Email[]` |
 | `email:send` | Provider-specific send via Gmail API or Graph API | Handles compose, reply, forward |
 | `email:mutate` | Archive, delete, label, star, mark read/unread | Provider-specific mutation |
 | `email:search` | Gmail: `q` parameter, Microsoft: `$search` OData | Unified search results |
@@ -52,4 +53,4 @@ interface EmailProvider {
 }
 ```
 
-This is how Gmail and Microsoft are implemented. Adding IMAP or other providers later means implementing this interface — no changes to UI or AI layer.
+This is how Gmail, Microsoft, and IMAP are implemented. Adding new providers means implementing this interface — no changes to UI or AI layer.

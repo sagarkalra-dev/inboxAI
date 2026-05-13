@@ -43,6 +43,7 @@ AI-first universal email client. Mobile-ready PWA built with Next.js on Vercel.
 - **Email providers:**
   - Gmail — Google OAuth 2.0 + Gmail API (`googleapis`)
   - Office 365 — Microsoft OAuth 2.0 + Graph API (`@microsoft/microsoft-graph-client`)
+  - IMAP — Yahoo / AOL / generic IMAP via `imapflow` + `nodemailer`, authenticated with app passwords stored encrypted in KV
 - **Auth/Session:** Vercel KV (Redis) for encrypted OAuth tokens + session data. Cookies hold only a session ID — tokens are too large for cookie storage.
 - **Cache:** Vercel KV also caches AI enrichments (summaries, priorities) keyed by email ID. TTL 1 hour. Avoids re-processing on every page load.
 - **PWA:** Web app manifest + service worker (via `next-pwa` or manual)
@@ -103,7 +104,7 @@ public/
 - **AI-first UX:** Smart Inbox is the default view — emails arrive pre-prioritized, summarized, with draft replies ready. Traditional inbox is one tap away but not the default.
 - **Unified abstraction:** All email providers normalize to a single `Email` type. Components never know which provider an email came from.
 - **Mobile-first:** Responsive design with bottom nav on mobile, sidebar on desktop. Every interaction must work on a phone.
-- **Two solid providers:** Gmail is primary, Office 365 is secondary. Both fully implemented. The `EmailProvider` interface allows adding IMAP later but we don't ship a half-working third provider.
+- **Three providers, one contract:** Gmail (primary, OAuth + Gmail API), Office 365 (secondary, OAuth + Graph API), and IMAP (Yahoo/AOL/custom via app passwords). All three implement the same `EmailProvider` interface. Components and the AI layer are provider-agnostic.
 
 ### Conventions
 - App Router with server components by default, `"use client"` only where needed
